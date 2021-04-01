@@ -2,7 +2,7 @@ const _ = require('underscore');
 
 const NO_LMP_DATE_MODIFIER = 4;
 
-module.exports = function(settings) {
+module.exports = function (settings) {
   const taskSchedules = settings && settings.tasks && settings.tasks.schedules;
   const lib = {
     /**
@@ -14,7 +14,7 @@ module.exports = function(settings) {
     */
     isTimely: () => true,
 
-    addDate: function(date, days) {
+    addDate: function (date, days) {
       let result;
       if (date) {
         result = new Date(date.getTime());
@@ -26,41 +26,41 @@ module.exports = function(settings) {
       return result;
     },
 
-    getLmpDate: function(doc) {
+    getLmpDate: function (doc) {
       const weeks = doc.fields.last_menstrual_period || NO_LMP_DATE_MODIFIER;
       return lib.addDate(new Date(doc.reported_date), weeks * -7);
     },
 
     // TODO getSchedule() can be removed when tasks.json support is dropped
-    getSchedule: function(name) {
+    getSchedule: function (name) {
       return _.findWhere(taskSchedules, { name: name });
     },
 
-    getMostRecentTimestamp: function(reports, form, fields) {
+    getMostRecentTimestamp: function (reports, form, fields) {
       const report = lib.getMostRecentReport(reports, form, fields);
       return report && report.reported_date;
     },
 
-    getMostRecentReport: function(reports, form, fields) {
+    getMostRecentReport: function (reports, form, fields) {
       let result = null;
-      reports.forEach(function(report) {
+      reports.forEach(function (report) {
         if (report.form === form &&
-           !report.deleted &&
-           (!result || (report.reported_date > result.reported_date)) &&
-           (!fields || (report.fields && lib.fieldsMatch(report, fields)))) {
+          !report.deleted &&
+          (!result || (report.reported_date > result.reported_date)) &&
+          (!fields || (report.fields && lib.fieldsMatch(report, fields)))) {
           result = report;
         }
       });
       return result;
     },
 
-    isFormSubmittedInWindow: function(reports, form, start, end, count) {
+    isFormSubmittedInWindow: function (reports, form, start, end, count) {
       let result = false;
-      reports.forEach(function(report) {
+      reports.forEach(function (report) {
         if (!result && report.form === form) {
           if (report.reported_date >= start && report.reported_date <= end) {
             if (!count ||
-               (count && report.fields && report.fields.follow_up_count > count)) {
+              (count && report.fields && report.fields.follow_up_count > count)) {
               result = true;
             }
           }
@@ -69,7 +69,37 @@ module.exports = function(settings) {
       return result;
     },
 
-    isFirstReportNewer: function(firstReport, secondReport) {
+    /**
+     * Provides a default resolvedIf condition for tasks, to be called from resolvedIf() section of the task
+     * @param {Object} contact - Pass the first argument of resolvedIf() with the same name
+     * @param {Object} report - Pass the second argument of resolvedIf() with the same name
+     * @param {Object} event - Pass the third argument of resolvedIf() with the same name
+     * @param {Date} dueDate - Pass the fourth argument of resolvedIf() with the same name
+     * @param {String} resolvingForm - Form type used to check if resolved
+     * @returns - true or false, depending on whether the contact's reports include the specified form type
+     *     within a period specified by the task windoow. If the task was triggered by a report, the period
+     *     starts either at the beginning of the task window or just after the triggering report's reported
+     *     date, whichever comes later.       
+     */
+    defaultResolvedIf: function (contact, report, event, dueDate, resolvingForm) {
+      let start = 0;
+      if (report) {//Report based task
+        //Start of the task window or after the report's reported date, whichever comes later
+        start = Math.max(this.addDate(dueDate, -event.start).getTime(), report.reported_date + 1);
+      }
+      else {
+        start = this.addDate(dueDate, -event.start).getTime();
+      }
+      const end = this.addDate(dueDate, event.end + 1).getTime();
+      return this.isFormSubmittedInWindow(
+        contact.reports,
+        resolvingForm,
+        start,
+        end
+      );
+    },
+
+    isFirstReportNewer: function (firstReport, secondReport) {
       if (firstReport && firstReport.reported_date) {
         if (secondReport && secondReport.reported_date) {
           return firstReport.reported_date > secondReport.reported_date;
@@ -79,7 +109,7 @@ module.exports = function(settings) {
       return null;
     },
 
-    isDateValid: function(date) {
+    isDateValid: function (date) {
       return !isNaN(date.getTime());
     },
 
@@ -93,19 +123,19 @@ module.exports = function(settings) {
      *      the root node e.g 'dob' (equivalent to report.fields.dob)
      *      or 'screening.test_result' equivalent to report.fields.screening.test_result
     */
-    getField: function(report, field) {
+    getField: function (report, field) {
       return _.propertyOf(report.fields)(field.split('.'));
     },
 
-    fieldsMatch: function(report, fieldValues) {
-      return Object.keys(fieldValues).every(function(field) {
-          return lib.getField(report, field) === fieldValues[field];
+    fieldsMatch: function (report, fieldValues) {
+      return Object.keys(fieldValues).every(function (field) {
+        return lib.getField(report, field) === fieldValues[field];
       });
     },
 
-    MS_IN_DAY: 24*60*60*1000, // 1 day in ms
+    MS_IN_DAY: 24 * 60 * 60 * 1000, // 1 day in ms
 
-    now: function() { return new Date(); },
+    now: function () { return new Date(); },
   };
 
   return lib;
