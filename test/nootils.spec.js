@@ -194,4 +194,127 @@ describe('Utils', () => {
       expect(actual).to.eq(false);
     });
   });
+
+  describe('isFormSubmittedInWindow', () => {
+    it('returns true if the reports include one report with specified form sent between start and end dates', () => {
+      const reports = [
+        { _id: 1, form: 'H', reported_date: 1,},
+        { _id: 2, form: 'P', reported_date: 2,},
+        { _id: 3, form: 'D', reported_date: 3,}
+      ];
+      const actual = nootils.isFormSubmittedInWindow(reports, 'P', 1, 2);
+      expect(actual).to.eq(true);
+    });
+
+    it('returns true if the reports include one report with specified form sent on the start date', () => {
+      const reports = [
+        { _id: 1, form: 'H', reported_date: 1,},
+        { _id: 2, form: 'P', reported_date: 2,},
+        { _id: 3, form: 'D', reported_date: 3,}
+      ];
+      const actual = nootils.isFormSubmittedInWindow(reports, 'H', 1, 3);
+      expect(actual).to.eq(true);
+    });
+
+    it('returns true if the reports include one report with specified form sent on the end date', () => {
+      const reports = [
+        { _id: 1, form: 'H', reported_date: 1,},
+        { _id: 2, form: 'P', reported_date: 2,},
+        { _id: 3, form: 'D', reported_date: 3,}
+      ];
+      const actual = nootils.isFormSubmittedInWindow(reports, 'D', 1, 3);
+      expect(actual).to.eq(true);
+    });
+
+    it('returns false if the reports include one report with specified form but sent before the start date', () => {
+      const reports = [
+        { _id: 1, form: 'H', reported_date: 1,},
+        { _id: 2, form: 'P', reported_date: 2,},
+        { _id: 3, form: 'D', reported_date: 3,}
+      ];
+      const actual = nootils.isFormSubmittedInWindow(reports, 'H', 2, 3);
+      expect(actual).to.eq(false);
+    });
+
+    it('returns false if the reports include one report with specified form but sent after the end date', () => {
+      const reports = [
+        { _id: 1, form: 'H', reported_date: 1,},
+        { _id: 2, form: 'P', reported_date: 2,},
+        { _id: 3, form: 'D', reported_date: 3,}
+      ];
+      const actual = nootils.isFormSubmittedInWindow(reports, 'D', 1, 2);
+      expect(actual).to.eq(false);
+    });
+
+    it('returns false if the reports do not include any report with specified form between the start and end dates', () => {
+      const reports = [
+        { _id: 1, form: 'P', reported_date: 1,},
+        { _id: 2, form: 'D', reported_date: 2,}
+      ];
+      const actual = nootils.isFormSubmittedInWindow(reports, 'H', 1, 2);
+      expect(actual).to.eq(false);
+    });
+  });
+
+  describe('defaultResolvedIf', () => {
+    it('returns true if the reports include one report with specified form sent in task window', () => {
+      const contact = {
+        reports: [
+          { _id: 1, form: 'H', reported_date: 1, },
+          { _id: 2, form: 'P', reported_date: 2, },
+          { _id: 3, form: 'D', reported_date: 3, }
+        ]
+      };
+      const report = {_id: 2, form: 'P', reported_date: 2};
+      const event = {days: 2, start: 1, end: 1};
+      const dueDate = new Date(2);
+      const actual = nootils.defaultResolvedIf(contact, report, event, dueDate, 'D');
+      expect(actual).to.eq(true);
+    });
+
+    it('returns false if the reports does not include report with specified form', () => {
+      const contact = {
+        reports: [
+          { _id: 1, form: 'H', reported_date: 1, },
+          { _id: 2, form: 'P', reported_date: 2, },
+          { _id: 3, form: 'M', reported_date: 3, }
+        ]
+      };
+      const report = {_id: 2, form: 'P', reported_date: 2};
+      const event = {days: 2, start: 1, end: 1};
+      const dueDate = new Date(2);
+      const actual = nootils.defaultResolvedIf(contact, report, event, dueDate, 'D');
+      expect(actual).to.eq(false);
+    });
+
+    it('returns false if the reports include report with specified form but submitted before the source report', () => {
+      const contact = {
+        reports: [
+          { _id: 1, form: 'H', reported_date: 1, },
+          { _id: 2, form: 'P', reported_date: 2, },
+          { _id: 3, form: 'M', reported_date: 3, }
+        ]
+      };
+      const report = {_id: 2, form: 'P', reported_date: 2};
+      const event = {days: 2, start: 1, end: 1};
+      const dueDate = new Date(2);
+      const actual = nootils.defaultResolvedIf(contact, report, event, dueDate, 'H');
+      expect(actual).to.eq(false);
+    });
+
+    it('returns true if the source of the task is contact and the reports include report with specified form', () => {
+      const contact = {
+        reports: [
+          { _id: 1, form: 'H', reported_date: 1, },
+          { _id: 2, form: 'P', reported_date: 2, },
+          { _id: 3, form: 'M', reported_date: 3, }
+        ]
+      };
+      const report = undefined;
+      const event = {days: 2, start: 1, end: 1};
+      const dueDate = new Date(2);
+      const actual = nootils.defaultResolvedIf(contact, report, event, dueDate, 'H');
+      expect(actual).to.eq(true);
+    });
+  });
 });
